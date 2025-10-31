@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RentEase Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>RentEase Dashboard</h1>
+
+  <!-- Summary Cards -->
+  <div class="card-container" id="summary-cards"></div>
+
+  <!-- Charts -->
+  <div class="chart-container">
+    <h3>Demand per Station</h3>
+    <canvas id="demandChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h3>Revenue Over Time</h3>
+    <canvas id="revenueChart"></canvas>
+  </div>
+
+  <!-- Tables -->
+  <div class="chart-container">
+    <h3>Recent Sessions</h3>
+    <table id="recent-sessions" border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Start Station</th>
+          <th>End Station</th>
+          <th>Start Time</th>
+          <th>End Time</th>
+          <th>Payment Status</th>
+          <th>Paid Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="chart-container">
+    <h3>Pending Payments</h3>
+    <table id="pending-payments" border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Session ID</th>
+          <th>Amount</th>
+          <th>Due Date</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function fetchData() {
+      try {
+        const [summary, demand, revenue, recentSessions, pendingPayments] = await Promise.all([
+          fetch("http://localhost:5000/api/summary").then(r => r.json()),
+          fetch("http://localhost:5000/api/demand").then(r => r.json()),
+          fetch("http://localhost:5000/api/revenue").then(r => r.json()),
+          fetch("http://localhost:5000/api/recent-sessions").then(r => r.json()),
+          fetch("http://localhost:5000/api/pending-payments").then(r => r.json())
+        ]);
+
+        // Update summary cards
+        const summaryContainer = document.getElementById("summary-cards");
+        summaryContainer.innerHTML = `
+          <div class='card'><h2>${summary.activeRentals}</h2><p>Active Rentals</p></div>
+          <div class='card'><h2>${summary.overdueRentals}</h2><p>Overdue Rentals</p></div>
+          <div class='card'><h2>${summary.pendingPayments}</h2><p>Pending Payments</p></div>
+          <div class='card'><h2>${summary.revenueToday}</h2><p>Revenue Today</p></div>
+          <div class='card'><h2>${summary.revenueMonth}</h2><p>Revenue This Month</p></div>
+          <div class='card'><h2>${summary.stationsAtCapacity}</h2><p>Stations at Capacity</p></div>
+          <div class='card'><h2>${summary.frequentStudent?.name || "—"}</h2><p>Most Frequent Student</p></div>
+          <div class='card'><h2>${summary.busiestStation?.name || "—"}</h2><p>Busiest Station</p></div>
+        `;
+
+        // Demand chart
+        new Chart(document.getElementById("demandChart"), {
+          type: "bar",
+          data: {
+            labels: demand.map(d => d.station),
+            datasets: [
+              { label: "Pickups", data: demand.map(d => d.pickups), backgroundColor: "rgba(75,192,192,0.6)" },
+              { label: "Returns", data: demand.map(d => d.returns), backgroundColor: "rgba(153,102,255,0.6)" }
+            ]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'top' } } }
+        });
+
+        // Revenue chart
+        new Chart(document.getElementById("revenueChart"), {
+          type: "line",
+          data: {
+            labels: revenue.map(r => r.date),
+            datasets: [{
+              label: "Revenue",
+              data: revenue.map(r => r.total),
+              borderColor: "rgba(255,99,132,1)",
+              backgroundColor: "rgba(255,99,132,0.1)",
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        // Recent sessions table
+        const recentBody = document.querySelector("#recent-sessions tbody");
+        recentBody.innerHTML = recentSessions.map(s => `
+          <tr>
+            <td>${s.student?.name || "—"}</td>
+            <td>${s.startStation?.name || "—"}</td>
+            <td>${s.endStation?.name || "—"}</td>
+            <td>${s.start_time ? new Date(s.start_time).toLocaleString() : "—"}</td>
+            <td>${s.end_time ? new Date(s.end_time).toLocaleString() : "—"}</td>
+            <td>${s.payment?.status || "—"}</td>
+            <td>${s.payment?.paid_amount != null ? Number(s.payment.paid_amount) : "—"}</td>
+          </tr>
+        `).join("");
+
+        // Pending payments table
+        const pendingBody = document.querySelector("#pending-payments tbody");
+        pendingBody.innerHTML = pendingPayments.map(p => `
+          <tr>
+            <td>${p.session?.student?.name || "—"}</td>
+            <td>${p.session_id}</td>
+            <td>${p.amount != null ? Number(p.amount) : "—"}</td>
+            <td>${p.due_date ? new Date(p.due_date).toLocaleDateString() : "—"}</td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+      }
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
