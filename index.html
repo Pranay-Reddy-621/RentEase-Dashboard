@@ -61,11 +61,11 @@
     async function fetchData() {
       try {
         const [summary, demand, revenue, recentSessions, pendingPayments] = await Promise.all([
-          fetch("http://localhost:5000/api/summary").then(r => r.json()),
-          fetch("http://localhost:5000/api/demand").then(r => r.json()),
-          fetch("http://localhost:5000/api/revenue").then(r => r.json()),
-          fetch("http://localhost:5000/api/recent-sessions").then(r => r.json()),
-          fetch("http://localhost:5000/api/pending-payments").then(r => r.json())
+          fetch("/api/summary").then(r => r.json()),
+          fetch("/api/demand").then(r => r.json()),
+          fetch("/api/revenue").then(r => r.json()),
+          fetch("/api/recent-sessions").then(r => r.json()),
+          fetch("/api/pending-payments").then(r => r.json())
         ]);
 
         // Update summary cards
